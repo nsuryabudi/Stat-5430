@@ -7,21 +7,16 @@ from settings import FEAT_DIR, MODEL_DIR, TRAIN_END, VALID_END, SEED
 from utils import season_split
 
 STAT_COLS = [
-    # **ORIGINAL STATS (keep these)**
     "home_passing_yards",
     "home_rushing_yards",
     "home_yards",
     "home_sacks",
     "home_sacks_allowed",
-    
-    # **PREVIOUSLY MISSING (add these)**
     "home_first_downs",
     "home_penalties",
     "home_penalty_yards",
     "home_fg_made",
     "home_fg_att",
-    
-    # **NEW HIGH-VALUE STATS (add these)**
     "home_turnovers",
     "home_turnovers_forced",
     "home_yards_per_play",
@@ -55,17 +50,11 @@ def fit_reg_and_q(Xtr, ytr, Xva, yva, sample_weights_tr=None, alpha=0.10):
 
 def main():
     matchups = pd.read_parquet(FEAT_DIR / "matchups.parquet")
-
-    # rolling diffs
     home_cols = [c for c in matchups.columns
                  if c.startswith("home_") and c.endswith(("_r3","_r5","_r8","_r10","_exp"))]
-    # diff_cols = [f"diff_{hc[len('home_'):]}" for hc in home_cols
-    #              if f"away_{hc[len('home_'):]}" in matchups.columns]
 
-    # include market features if present (often improves yard/sack models too)
     market_feats = [c for c in ["market_home_prob","spread_line","total_line"] if c in matchups.columns]
     market_feats = []
-    #feature_cols = sorted(set(diff_cols)) + market_feats
 
     feature_cols = sorted(home_cols) + market_feats
     print("[train_stats] using features:", len(feature_cols))
@@ -81,7 +70,6 @@ def main():
     seasons_tr = seasons.iloc[tr]
     min_season = seasons_tr.min()
     max_season = seasons_tr.max()
-    # sample_weights_tr = 1.0 + (seasons_tr - min_season) / (max_season - min_season)
     decay_rate = 0.65
     sample_weights_tr = decay_rate ** (max_season - seasons_tr)
     print(f"[train_stats] sample weight range: {sample_weights_tr.min():.2f} to {sample_weights_tr.max():.2f}")

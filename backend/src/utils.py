@@ -5,8 +5,6 @@ import pandas as pd
 def season_split(season: pd.Series, train_end: int, valid_end: int):
     # Train: everything up to train_end EXCEPT valid_year
     s = season.values
-    
-    # Train: everything up to train_end EXCEPT valid_end year
     tr = np.where((s <= train_end) & (s != valid_end))[0]
     
     # Validation: only the valid_end year

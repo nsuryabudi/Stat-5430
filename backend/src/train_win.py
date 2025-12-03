@@ -12,7 +12,6 @@ from sklearn.metrics import log_loss, brier_score_loss, roc_auc_score
 from settings import FEAT_DIR, MODEL_DIR, TRAIN_END, VALID_END, SEED
 from utils import season_split
 
-# Save to a separate family (so you can keep a no-markets model if you want)
 OUT = MODEL_DIR / "win_clf_markets" / "v001"
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -60,8 +59,7 @@ def main():
     max_season = seasons_tr.max()
     print(f"[train_win] training seasons: {min_season} to {max_season} ")
 
-    #0.80 -> 66.67, #0.75 -> 66.75, #0.70 -> 67.08, #0.65 -> 67.37
-    decay_rate = 0.65  # Adjust between 0.85-0.95
+    decay_rate = 0.65 
     sample_weights_tr = decay_rate ** (max_season - seasons_tr)
     
     print(f"[train_win] sample weight range: {sample_weights_tr.min():.2f} to {sample_weights_tr.max():.2f}")

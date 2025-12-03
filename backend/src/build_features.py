@@ -74,7 +74,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
         else:
             base[stat] = np.nan
 
-    # **1. TURNOVERS**
     turnovers_cols = ["passing_interceptions", "rushing_fumbles_lost", "receiving_fumbles_lost", "sack_fumbles_lost"]
     base["turnovers"] = 0
     for col in turnovers_cols:
@@ -86,7 +85,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
                 base = base.drop(columns=[f"{col}_temp"])
     print(f"turnovers: non-null = {base['turnovers'].notnull().sum()}, non-zero = {(base['turnovers'] != 0).sum()}")
 
-    # **2. TURNOVERS FORCED**
     turnovers_forced_cols = ["def_interceptions", "def_fumbles"]
     base["turnovers_forced"] = 0
     for col in turnovers_forced_cols:
@@ -98,7 +96,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
                 base = base.drop(columns=[f"{col}_temp"])
     print(f"turnovers_forced: non-null = {base['turnovers_forced'].notnull().sum()}, non-zero = {(base['turnovers_forced'] != 0).sum()}")
 
-    # **3. YARDS PER PLAY**
     if "attempts" in tw.columns and "carries" in tw.columns:
         plays_data = tw[["season","week","team","attempts","carries"]].copy()
         plays_data["plays"] = plays_data["attempts"].fillna(0) + plays_data["carries"].fillna(0)
@@ -112,7 +109,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
     else:
         base["yards_per_play"] = np.nan
 
-    # **4. QB HITS**
     if "def_qb_hits" in tw.columns:
         base = base.merge(
             tw[["season","week","team","def_qb_hits"]].rename(columns={"def_qb_hits":"qb_hits_for"}),
@@ -131,7 +127,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
         base["qb_hits_for"] = np.nan
         base["qb_hits_allowed"] = np.nan
 
-    # **5. TACKLES FOR LOSS**
     if "def_tackles_for_loss" in tw.columns:
         base = base.merge(
             tw[["season","week","team","def_tackles_for_loss"]].rename(
@@ -142,7 +137,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
     else:
         base["tackles_for_loss"] = np.nan
 
-    # **6. PASSES DEFENDED**
     if "def_pass_defended" in tw.columns:
         base = base.merge(
             tw[["season","week","team","def_pass_defended"]].rename(
@@ -153,7 +147,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
     else:
         base["passes_defended"] = np.nan
 
-    # **7. DEFENSIVE TDs**
     if "def_tds" in tw.columns:
         base = base.merge(
             tw[["season","week","team","def_tds"]].rename(columns={"def_tds":"defensive_tds"}),
@@ -163,7 +156,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
     else:
         base["defensive_tds"] = np.nan
 
-    # **8. COMPLETION PERCENTAGE**
     if "completions" in tw.columns and "attempts" in tw.columns:
         comp_data = tw[["season","week","team","completions","attempts"]].copy()
         comp_data["completion_pct"] = comp_data["completions"] / comp_data["attempts"].replace(0, np.nan)
@@ -175,7 +167,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
     else:
         base["completion_pct"] = np.nan
 
-    # **9. YARDS PER CARRY**
     if "rushing_yards" in tw.columns and "carries" in tw.columns:
         rush_data = tw[["season","week","team","rushing_yards","carries"]].copy()
         rush_data["yards_per_carry"] = rush_data["rushing_yards"] / rush_data["carries"].replace(0, np.nan)
@@ -187,7 +178,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
     else:
         base["yards_per_carry"] = np.nan
 
-    # **10. INTERCEPTION RETURN YARDS**
     if "def_interception_yards" in tw.columns:
         base = base.merge(
             tw[["season","week","team","def_interception_yards"]].rename(
@@ -198,7 +188,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
     else:
         base["int_return_yards"] = np.nan
 
-    # **11. TWO-POINT CONVERSIONS**
     if "passing_2pt_conversions" in tw.columns and "rushing_2pt_conversions" in tw.columns:
         twopts_data = tw[["season","week","team","passing_2pt_conversions","rushing_2pt_conversions"]].copy()
         twopts_data["two_pt_conversions"] = twopts_data["passing_2pt_conversions"].fillna(0) + twopts_data["rushing_2pt_conversions"].fillna(0)
@@ -210,7 +199,6 @@ def build_base(team_week: pd.DataFrame, schedules: pd.DataFrame) -> pd.DataFrame
     else:
         base["two_pt_conversions"] = np.nan
 
-    # Skip third_down_pct, red_zone_td_pct, time_of_possession (not in team_week)
     base["third_down_pct"] = np.nan
     base["red_zone_td_pct"] = np.nan
     base["time_of_possession"] = np.nan
@@ -221,19 +209,12 @@ def build_labels(games: pd.DataFrame, base: pd.DataFrame) -> pd.DataFrame:
     labels = games.copy()
     labels["home_win"] = (labels["home_score"] > labels["away_score"]).astype("int8")
 
-    # map team-level stats onto home/away sides
-    #cols = ["season","week","team","points","yards","passing_yards","rushing_yards","sacks_for","sacks_allowed"]
-    # cols = ["season","week","team","points","yards","passing_yards","rushing_yards","sacks_for","sacks_allowed",
-    #     "first_downs","penalties","penalty_yards","fg_made","fg_att"]
     cols = [
         "season", "week", "team",
-        # Original stats
         "points", "yards", "passing_yards", "rushing_yards", 
         "sacks_for", "sacks_allowed",
-        # Previously missing
         "first_downs", "penalties", "penalty_yards", 
         "fg_made", "fg_att",
-        # **NEW HIGH-VALUE STATS**
         "turnovers", "turnovers_forced", "yards_per_play",
         "qb_hits_for", "qb_hits_allowed",
         "tackles_for_loss", "passes_defended", "defensive_tds",
@@ -256,18 +237,15 @@ def build_labels(games: pd.DataFrame, base: pd.DataFrame) -> pd.DataFrame:
         labels["home_points"] = labels["home_score"].astype("float32")
         labels["away_points"] = labels["away_score"].astype("float32")
 
-        # Original stats
     for stat in ["yards", "passing_yards", "rushing_yards"]:
         map_stat(stat)
     
     map_stat("sacks_for", "home_sacks", "away_sacks")
     map_stat("sacks_allowed", "home_sacks_allowed", "away_sacks_allowed")
 
-    # Previously missing stats
     for stat in ["first_downs", "penalties", "penalty_yards", "fg_made", "fg_att"]:
         map_stat(stat)
 
-    # **NEW HIGH-VALUE STATS**
     for stat in [
         "turnovers", "turnovers_forced", "yards_per_play",
         "qb_hits_for", "qb_hits_allowed",
@@ -276,45 +254,20 @@ def build_labels(games: pd.DataFrame, base: pd.DataFrame) -> pd.DataFrame:
         "int_return_yards", "two_pt_conversions"
     ]:
         map_stat(stat)
-    #for stat in ["yards","passing_yards","rushing_yards"]:
-    #for stat in ["yards","passing_yards","rushing_yards","red_zone_td_pct","third_down_pct","first_downs","time_of_possession"]:
-    # for stat in ["yards","passing_yards","rushing_yards","first_downs","penalties","penalty_yards","fg_made","fg_att"]:
-    #     map_stat(stat)
-    # map_stat("sacks_for","home_sacks","away_sacks")
-    # map_stat("sacks_allowed","home_sacks_allowed","away_sacks_allowed")
 
-    # # ----- MARKET FEATURES -----
-    # # raw market columns may or may not be present depending on season
-    # # We keep them if they exist, and compute de-vigged implied probs.
-    # labels["home_ml_prob_raw"] = np.nan
-    # labels["away_ml_prob_raw"] = np.nan
-    # if "home_moneyline" in labels.columns:
-    #     labels["home_ml_prob_raw"] = labels["home_moneyline"].apply(american_to_prob)
-    # if "away_moneyline" in labels.columns:
-    #     labels["away_ml_prob_raw"] = labels["away_moneyline"].apply(american_to_prob)
-
-    # def _dv(row):
-    #     ph_nv, pa_nv, _vig = remove_vig(row["home_ml_prob_raw"], row["away_ml_prob_raw"])
-    #     return pd.Series({"market_home_prob": ph_nv, "market_away_prob": pa_nv})
-
-    # labels[["market_home_prob","market_away_prob"]] = labels.apply(_dv, axis=1)
     keep = [
         "game_id", "season", "week", "home_team", "away_team", "home_win",
-        # Scores
         "home_points", "away_points",
-        # Original stats
         "home_yards", "away_yards",
         "home_passing_yards", "away_passing_yards",
         "home_rushing_yards", "away_rushing_yards",
         "home_sacks", "away_sacks",
         "home_sacks_allowed", "away_sacks_allowed",
-        # Previously missing
         "home_first_downs", "away_first_downs",
         "home_penalties", "away_penalties",
         "home_penalty_yards", "away_penalty_yards",
         "home_fg_made", "away_fg_made",
         "home_fg_att", "away_fg_att",
-        # **NEW HIGH-VALUE STATS**
         "home_turnovers", "away_turnovers",
         "home_turnovers_forced", "away_turnovers_forced",
         "home_yards_per_play", "away_yards_per_play",
@@ -327,7 +280,6 @@ def build_labels(games: pd.DataFrame, base: pd.DataFrame) -> pd.DataFrame:
         "home_yards_per_carry", "away_yards_per_carry",
         "home_int_return_yards", "away_int_return_yards",
         "home_two_pt_conversions", "away_two_pt_conversions",
-        # Market
         "spread_line", "total_line",
         "home_moneyline", "away_moneyline",
         "market_home_prob", "market_away_prob",
@@ -363,14 +315,11 @@ def main():
     base.to_parquet(FEAT_DIR / "base.parquet", index=False)
 
     final_stats = [
-        # EXISTING
         "points", "yards", "passing_yards", "rushing_yards", 
         "sacks_for", "sacks_allowed",
         "first_downs", "penalties", "penalty_yards", 
         "fg_made", "fg_att",
         "turnovers", "turnovers_forced", "yards_per_play",
-        
-        # **NEW HIGH-VALUE FEATURES**
         "qb_hits_for", "qb_hits_allowed",           # QB pressure
         "tackles_for_loss",                          # Defensive penetration
         "passes_defended",                           # Pass defense
