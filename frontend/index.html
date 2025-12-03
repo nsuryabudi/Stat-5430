@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>NFL Matchup Predictor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg: #0b0d12;
+      --panel: #121621;
+      --muted: #9aa3b2;
+      --text: #e8ecf1;
+      --accent: #4f8cff;
+      --accent-2:#22c55e;
+      --danger:#ef4444;
+      --border: #1f2430;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg: #f7f8fb; --panel:#ffffff; --muted:#5b6574; --text:#0f1625;
+        --accent:#2f6cf6; --accent-2:#16a34a; --danger:#dc2626; --border:#e7eaf0;
+        --shadow: 0 10px 30px rgba(10,15,25,.08);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(79,140,255,.10), transparent 40%) ,
+                  radial-gradient(800px 400px at 100% 0%, rgba(34,197,94,.08), transparent 40%),
+                  var(--bg);
+    }
+    .wrap { max-width: 980px; margin: 48px auto; padding: 0 20px; }
+    h1 { font-size: clamp(24px, 3vw, 36px); line-height: 1.15; margin: 0 0 18px; letter-spacing: .3px; }
+    .sub { color: var(--muted); margin-bottom: 22px; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .controls { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+    label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+    select, button {
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+    }
+    select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 25%, transparent); }
+
+    .btn {
+      background: linear-gradient(180deg, var(--accent), color-mix(in oklab, var(--accent) 85%, black));
+      border: none; color: white; font-weight: 600; cursor: pointer;
+      transition: transform .04s ease, filter .15s ease, opacity .15s;
+    }
+    .btn:hover { filter: brightness(1.04); }
+    .btn:active { transform: translateY(1px); }
+    .btn[disabled] { opacity: .6; cursor: not-allowed; }
+
+    .alert { margin-top: 14px; padding: 10px 12px; border-radius: 10px; font-size: 14px; display: none; }
+    .alert.err { background: color-mix(in oklab, var(--danger) 12%, transparent); color: color-mix(in oklab, var(--danger) 90%, white); border: 1px solid color-mix(in oklab, var(--danger) 35%, var(--border)); }
+    .alert.ok  { background: color-mix(in oklab, var(--accent-2) 12%, transparent); color: color-mix(in oklab, var(--accent-2) 90%, white); border: 1px solid color-mix(in oklab, var(--accent-2) 35%, var(--border)); }
+
+    .section { margin-top: 18px; }
+    .teams { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .teams h3 { margin: 0; font-size: 20px; }
+    .meta { color: var(--muted); font-size: 13px; }
+
+    /* probability meter */
+    .meter {
+      margin: 10px 0 6px; height: 12px; border-radius: 999px; background: #0f1420; border: 1px solid var(--border);
+      position: relative; overflow: hidden;
+    }
+    .bar {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      width: 0%; transition: width .35s ease;
+    }
+    .meter-labels { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    @media (max-width: 720px){ .grid { grid-template-columns: 1fr; } }
+
+    .stat-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: color-mix(in oklab, var(--panel) 90%, transparent);
+      max-height: 600px;  /* **NEW: Prevent overflow** */
+      overflow-y: auto;   /* **NEW: Scroll if needed** */
+    }
+
+    .stat-card::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .stat-card::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 999px;
+    }
+
+    .stat-card::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .stat-card h4 { margin: 0 0 8px; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing: .3px; }
+    .stat-row { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0; }
+    .stat-name { color: var(--muted); font-size: 13px; }
+    .stat-val { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .chip {
+      font-variant-numeric: tabular-nums;
+      border: 1px dashed var(--border); color: var(--muted);
+      padding: 2px 8px; border-radius: 999px; font-size: 12px;
+    }
+
+    pre { margin-top: 16px; padding: 12px; border-radius: 12px; background: #0f1420; border: 1px solid var(--border); color: #c9d4e5; }
+    .small { font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>NFL Matchup Predictor</h1>
+    <div class="sub">Pick two teams and get win probabilities plus projected passing/rushing yards and sacks with 90% ranges.</div>
+
+    <div class="card">
+      <div class="controls" role="group" aria-label="Team selection">
+        <div>
+          <label for="home">Home team</label>
+          <select id="home" name="home" aria-label="Home team"></select>
+        </div>
+        <div>
+          <label for="away">Away team</label>
+          <select id="away" name="away" aria-label="Away team"></select>
+        </div>
+        <button id="go" class="btn" aria-label="Predict matchup">Predict</button>
+      </div>
+
+      <div id="alert" class="alert"></div>
+
+      <div id="summary" class="section" hidden>
+        <div class="teams">
+          <h3 id="matchupTitle"></h3>
+          <span id="context" class="meta"></span>
+        </div>
+
+        <div class="meter" aria-label="Home win probability">
+          <div id="bar" class="bar"></div>
+        </div>
+        <div class="meter-labels">
+          <div><strong id="homePct">Home 0%</strong></div>
+          <div><strong id="awayPct">Away 0%</strong></div>
+        </div>
+
+        <div class="grid">
+          <div class="stat-card">
+            <h4 id="homeHead">Home projections</h4>
+            <div id="homeStats"></div>
+          </div>
+          <div class="stat-card">
+            <h4 id="awayHead">Away projections</h4>
+            <div id="awayStats"></div>
+          </div>
+        </div>
+
+        <div class="small" style="margin-top:10px;">Ranges show ±q (approx. 90% prediction intervals) from validation residuals.</div>
+      </div>
+
+      <pre id="raw" hidden></pre>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:8000";
+    const $ = (id) => document.getElementById(id);
+
+    // Custom display names (no logos). Value stays the short code used by your API.
+    const TEAMS = {
+      ARI:{city:"Arizona", name:"Cardinals", display:"ARI — Arizona Cardinals"},
+      ATL:{city:"Atlanta", name:"Falcons", display:"ATL — Atlanta Falcons"},
+      BAL:{city:"Baltimore", name:"Ravens", display:"BAL — Baltimore Ravens"},
+      BUF:{city:"Buffalo", name:"Bills", display:"BUF — Buffalo Bills"},
+      CAR:{city:"Carolina", name:"Panthers", display:"CAR — Carolina Panthers"},
+      CHI:{city:"Chicago", name:"Bears", display:"CHI — Chicago Bears"},
+      CIN:{city:"Cincinnati", name:"Bengals", display:"CIN — Cincinnati Bengals"},
+      CLE:{city:"Cleveland", name:"Browns", display:"CLE — Cleveland Browns"},
+      DAL:{city:"Dallas", name:"Cowboys", display:"DAL — Dallas Cowboys"},
+      DEN:{city:"Denver", name:"Broncos", display:"DEN — Denver Broncos"},
+      DET:{city:"Detroit", name:"Lions", display:"DET — Detroit Lions"},
+      GB :{city:"Green Bay", name:"Packers", display:"GB — Green Bay Packers"},
+      HOU:{city:"Houston", name:"Texans", display:"HOU — Houston Texans"},
+      IND:{city:"Indianapolis", name:"Colts", display:"IND — Indianapolis Colts"},
+      JAX:{city:"Jacksonville", name:"Jaguars", display:"JAX — Jacksonville Jaguars"},
+      KC :{city:"Kansas City", name:"Chiefs", display:"KC — Kansas City Chiefs"},
+      LAC:{city:"Los Angeles", name:"Chargers", display:"LAC — Los Angeles Chargers"},
+      LA :{city:"Los Angeles", name:"Rams", display:"LA — Los Angeles Rams"},
+      LV :{city:"Las Vegas", name:"Raiders", display:"LV — Las Vegas Raiders"},
+      MIA:{city:"Miami", name:"Dolphins", display:"MIA — Miami Dolphins"},
+      MIN:{city:"Minnesota", name:"Vikings", display:"MIN — Minnesota Vikings"},
+      NE :{city:"New England", name:"Patriots", display:"NE — New England Patriots"},
+      NO :{city:"New Orleans", name:"Saints", display:"NO — New Orleans Saints"},
+      NYG:{city:"New York", name:"Giants", display:"NYG — New York Giants"},
+      NYJ:{city:"New York", name:"Jets", display:"NYJ — New York Jets"},
+      PHI:{city:"Philadelphia", name:"Eagles", display:"PHI — Philadelphia Eagles"},
+      PIT:{city:"Pittsburgh", name:"Steelers", display:"PIT — Pittsburgh Steelers"},
+      SEA:{city:"Seattle", name:"Seahawks", display:"SEA — Seattle Seahawks"},
+      SF :{city:"San Francisco", name:"49ers", display:"SF — San Francisco 49ers"},
+      TB :{city:"Tampa Bay", name:"Buccaneers", display:"TB — Tampa Bay Buccaneers"},
+      TEN:{city:"Tennessee", name:"Titans", display:"TEN — Tennessee Titans"},
+      WAS:{city:"Washington", name:"Commanders", display:"WAS — Washington Commanders"},
+    };
+    const TEAM_ORDER = Object.keys(TEAMS);
+
+    const TEAM_PREFILL = ["NE","PHI"]; // defaults
+
+    function setAlert(msg, type="err"){
+      const el = $("alert");
+      el.className = `alert ${type}`;
+      el.style.display = "block";
+      el.textContent = msg;
+    }
+    function clearAlert(){ const el=$("alert"); el.style.display="none"; el.textContent=""; }
+
+    async function loadTeams() {
+      // Populate from the TEAMS map to get custom labels
+      for (const sel of [$("home"), $("away")]) {
+        sel.innerHTML = TEAM_ORDER
+          .map(code => `<option value="${code}">${TEAMS[code].display}</option>`)
+          .join("");
+      }
+      $("home").value = TEAM_PREFILL[0];
+      $("away").value = TEAM_PREFILL[1];
+
+      // (Optional) You can still hit /teams to validate supported codes:
+      // const res = await fetch(`${API}/teams`); // no-op in UI
+    }
+
+    function fmtPct(x){ return (x*100).toFixed(1) + "%"; }
+    // function statBlock(obj){
+    //   const want = ["home_passing_yards","home_rushing_yards","home_sacks","home_sacks_allowed","home_yards"];
+    //   const nameMap = {passing_yards:"Passing yards", rushing_yards:"Rushing yards", sacks:"Sacks", sacks_allowed:"Sacks allowed", yards:"Total yards"};
+    //   const rows = [];
+    //   for (const key of want) {
+    //     if (!obj[key]) continue;
+    //     const name = key.replace("home_", "");
+    //     const {pred, lo, hi} = obj[key];
+    //     rows.push(`
+    //       <div class="stat-row">
+    //         <div class="stat-name">${nameMap[name] || name}</div>
+    //         <div>
+    //           <span class="stat-val">${pred.toFixed(1)}</span>
+    //           <span class="chip">${lo.toFixed(1)}–${hi.toFixed(1)}</span>
+    //         </div>
+    //       </div>
+    //     `);
+    //   }
+    //   return rows.join("");
+    // }
+
+    function statBlock(obj, prefix){
+      // Define stat categories and display names
+      const categories = [
+        {
+          title: "Offense",
+          stats: [
+            {key: "passing_yards", name: "Passing yards"},
+            {key: "rushing_yards", name: "Rushing yards"},
+            {key: "yards", name: "Total yards"},
+            {key: "yards_per_play", name: "Yards/play", decimals: 2},
+            {key: "yards_per_carry", name: "Yards/carry", decimals: 2},
+            {key: "completion_pct", name: "Completion %", decimals: 1, percent: true},
+          ]
+        },
+        {
+          title: "Defense",
+          stats: [
+            {key: "sacks", name: "Sacks", decimals: 1},
+            {key: "sacks_allowed", name: "Sacks allowed", decimals: 1},
+            {key: "qb_hits_for", name: "QB hits", decimals: 1},
+            {key: "qb_hits_allowed", name: "QB hits allowed", decimals: 1},
+            {key: "tackles_for_loss", name: "Tackles for loss", decimals: 1},
+            {key: "passes_defended", name: "Passes defended", decimals: 1},
+          ]
+        },
+        {
+          title: "Turnovers",
+          stats: [
+            {key: "turnovers", name: "Turnovers", decimals: 1},
+            {key: "turnovers_forced", name: "Turnovers forced", decimals: 1},
+            {key: "defensive_tds", name: "Defensive TDs", decimals: 1},
+            {key: "int_return_yards", name: "INT return yards", decimals: 1},
+          ]
+        },
+        {
+          title: "Other",
+          stats: [
+            {key: "first_downs", name: "First downs", decimals: 1},
+            {key: "penalties", name: "Penalties", decimals: 1},
+            {key: "penalty_yards", name: "Penalty yards", decimals: 1},
+            {key: "fg_made", name: "FG made", decimals: 1},
+            {key: "fg_att", name: "FG attempts", decimals: 1},
+            {key: "two_pt_conversions", name: "2PT conversions", decimals: 1},
+          ]
+        }
+      ];
+
+      let html = "";
+      
+      for (const category of categories) {
+        // Check if any stats in this category exist
+        const hasStats = category.stats.some(s => obj[`${prefix}${s.key}`]);
+        if (!hasStats) continue;
+
+        html += `<div style="margin-top: 12px;"><strong style="color: var(--accent); font-size: 13px;">${category.title}</strong></div>`;
+        
+        for (const stat of category.stats) {
+          const statKey = `${prefix}${stat.key}`;
+          if (!obj[statKey]) continue;
+          
+          const {pred, lo, hi} = obj[statKey];
+          const decimals = stat.decimals ?? 1;
+          
+          let predVal = pred.toFixed(decimals);
+          let loVal = lo.toFixed(decimals);
+          let hiVal = hi.toFixed(decimals);
+          
+          // Format percentages
+          if (stat.percent) {
+            predVal = (pred * 100).toFixed(decimals) + "%";
+            loVal = (lo * 100).toFixed(decimals) + "%";
+            hiVal = (hi * 100).toFixed(decimals) + "%";
+          }
+          
+          html += `
+            <div class="stat-row">
+              <div class="stat-name">${stat.name}</div>
+              <div>
+                <span class="stat-val">${predVal}</span>
+                <span class="chip">${loVal}–${hiVal}</span>
+              </div>
+            </div>
+          `;
+        }
+      }
+      
+      return html || '<div class="stat-name">No stats available</div>';
+    }
+
+    // function statBlock(obj, prefix){
+    //   const want = ["passing_yards","rushing_yards","sacks","sacks_allowed","yards"];
+    //   const nameMap = {passing_yards:"Passing yards", rushing_yards:"Rushing yards", sacks:"Sacks", sacks_allowed:"Sacks allowed", yards:"Total yards"};
+    //   const rows = [];
+    //   for (const key of want) {
+    //     const statKey = `${prefix}${key}`;
+    //     if (!obj[statKey]) continue;
+    //     const {pred, lo, hi} = obj[statKey];
+    //     rows.push(`
+    //       <div class="stat-row">
+    //         <div class="stat-name">${nameMap[key] || key}</div>
+    //         <div>
+    //           <span class="stat-val">${pred.toFixed(1)}</span>
+    //           <span class="chip">${lo.toFixed(1)}–${hi.toFixed(1)}</span>
+    //         </div>
+    //       </div>
+    //     `);
+    //   }
+    //   return rows.join("");
+    // }
+
+    async function predict(){
+      clearAlert();
+      const btn = $("go");
+      btn.disabled = true; btn.textContent = "Predicting…";
+      $("summary").hidden = true;
+      $("raw").hidden = true;
+
+      const home = $("home").value, away = $("away").value;
+      if (home === away){ setAlert("Home and away cannot be the same team."); btn.disabled=false; btn.textContent="Predict"; return; }
+
+      try{
+        const res = await fetch(`${API}/predict`, {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({home, away})
+        });
+        if(!res.ok) throw new Error(await res.text());
+        const out = await res.json();
+
+        const H = TEAMS[out.home_team], A = TEAMS[out.away_team];
+
+        // header + meter
+        $("matchupTitle").textContent = `${H.city} ${H.name} vs ${A.city} ${A.name}`;
+        $("context").textContent = out.context || "";
+        const pHome = out.win_prob_home ?? 0;
+        $("bar").style.width = `${Math.max(0, Math.min(100, pHome*100))}%`;
+        $("homePct").textContent = `${H.name} ${fmtPct(pHome)}`;
+        $("awayPct").textContent = `${A.name} ${fmtPct(1 - pHome)}`;
+
+        // stat cards
+        $("homeHead").textContent = `${H.city} ${H.name} projections`;
+        $("awayHead").textContent = `${A.city} ${A.name} projections`;
+        $("homeStats").innerHTML = statBlock(out.stats.home, "home_");
+        $("awayStats").innerHTML = statBlock(out.stats.away, "away_");
+
+        // raw JSON (toggle by uncommenting next line)
+        $("raw").textContent = JSON.stringify(out, null, 2);
+        // $("raw").hidden = false;
+
+        $("summary").hidden = false;
+        setAlert("Prediction updated.", "ok");
+      }catch(e){
+        setAlert(`Prediction failed: ${e.message || e}`, "err");
+      }finally{
+        const btn2 = $("go");
+        btn2.disabled = false; btn2.textContent = "Predict";
+      }
+    }
+
+    $("go").addEventListener("click", predict);
+    loadTeams();
+  </script>
+</body>
+</html>
