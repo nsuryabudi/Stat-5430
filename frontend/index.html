@@ -245,27 +245,7 @@
     }
 
     function fmtPct(x){ return (x*100).toFixed(1) + "%"; }
-    // function statBlock(obj){
-    //   const want = ["home_passing_yards","home_rushing_yards","home_sacks","home_sacks_allowed","home_yards"];
-    //   const nameMap = {passing_yards:"Passing yards", rushing_yards:"Rushing yards", sacks:"Sacks", sacks_allowed:"Sacks allowed", yards:"Total yards"};
-    //   const rows = [];
-    //   for (const key of want) {
-    //     if (!obj[key]) continue;
-    //     const name = key.replace("home_", "");
-    //     const {pred, lo, hi} = obj[key];
-    //     rows.push(`
-    //       <div class="stat-row">
-    //         <div class="stat-name">${nameMap[name] || name}</div>
-    //         <div>
-    //           <span class="stat-val">${pred.toFixed(1)}</span>
-    //           <span class="chip">${lo.toFixed(1)}–${hi.toFixed(1)}</span>
-    //         </div>
-    //       </div>
-    //     `);
-    //   }
-    //   return rows.join("");
-    // }
-
+    
     function statBlock(obj, prefix){
       // Define stat categories and display names
       const categories = [
@@ -354,27 +334,6 @@
       
       return html || '<div class="stat-name">No stats available</div>';
     }
-
-    // function statBlock(obj, prefix){
-    //   const want = ["passing_yards","rushing_yards","sacks","sacks_allowed","yards"];
-    //   const nameMap = {passing_yards:"Passing yards", rushing_yards:"Rushing yards", sacks:"Sacks", sacks_allowed:"Sacks allowed", yards:"Total yards"};
-    //   const rows = [];
-    //   for (const key of want) {
-    //     const statKey = `${prefix}${key}`;
-    //     if (!obj[statKey]) continue;
-    //     const {pred, lo, hi} = obj[statKey];
-    //     rows.push(`
-    //       <div class="stat-row">
-    //         <div class="stat-name">${nameMap[key] || key}</div>
-    //         <div>
-    //           <span class="stat-val">${pred.toFixed(1)}</span>
-    //           <span class="chip">${lo.toFixed(1)}–${hi.toFixed(1)}</span>
-    //         </div>
-    //       </div>
-    //     `);
-    //   }
-    //   return rows.join("");
-    // }
 
     async function predict(){
       clearAlert();
