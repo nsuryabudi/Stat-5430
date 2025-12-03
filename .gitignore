@@ -1,0 +1,98 @@
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+.venv/
+
+# ============================================================
+# Data Files (LARGE - don't commit to git!)
+# ============================================================
+backend/data/raw/*.csv
+backend/data/raw/*.parquet
+backend/data/features/*.parquet
+
+# Exceptions: Keep empty directories
+!backend/data/raw/.gitkeep
+!backend/data/features/.gitkeep
+
+# ============================================================
+# Model Files (LARGE - don't commit to git!)
+# ============================================================
+backend/models/**/*.joblib
+backend/models/**/*.pkl
+backend/models/**/*.h5
+
+# Keep model metadata (small JSON files)
+!backend/models/**/meta.json
+
+# ============================================================
+# IDE / Editor
+# ============================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/
+
+# ============================================================
+# Jupyter Notebooks
+# ============================================================
+.ipynb_checkpoints/
+*.ipynb
+
+# ============================================================
+# Environment Variables
+# ============================================================
+.env
+.env.local
+
+# ============================================================
+# OS
+# ============================================================
+.DS_Store
+Thumbs.db
+
+# ============================================================
+# Node (if you add npm later)
+# ============================================================
+node_modules/
+package-lock.json
+
+# ============================================================
+# Temporary files
+# ============================================================
+*.tmp
+*.bak
+*.cache
