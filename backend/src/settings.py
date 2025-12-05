@@ -10,8 +10,8 @@ FEAT_DIR  = DATA_DIR / "features"
 MODEL_DIR = BACKEND / "models"
 
 SEASONS   = list(range(2014, 2025))
-TRAIN_END = 2023
-VALID_END = 2022
+TRAIN_END = 2022
+VALID_END = 2023
 SEED      = 42
 
 # NEW: IO settings

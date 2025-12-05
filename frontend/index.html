@@ -97,8 +97,8 @@
       border-radius: 14px;
       padding: 12px 14px;
       background: color-mix(in oklab, var(--panel) 90%, transparent);
-      max-height: 600px;  /* **NEW: Prevent overflow** */
-      overflow-y: auto;   /* **NEW: Scroll if needed** */
+      max-height: 600px;
+      overflow-y: auto;
     }
 
     .stat-card::-webkit-scrollbar {
@@ -113,7 +113,17 @@
     .stat-card::-webkit-scrollbar-track {
       background: transparent;
     }
+    
     .stat-card h4 { margin: 0 0 8px; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing: .3px; }
+    
+    .category-title {
+      margin-top: 12px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .3px;
+    }
+    
     .stat-row { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0; }
     .stat-name { color: var(--muted); font-size: 13px; }
     .stat-val { font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -123,14 +133,14 @@
       padding: 2px 8px; border-radius: 999px; font-size: 12px;
     }
 
-    pre { margin-top: 16px; padding: 12px; border-radius: 12px; background: #0f1420; border: 1px solid var(--border); color: #c9d4e5; }
+    pre { margin-top: 16px; padding: 12px; border-radius: 12px; background: #0f1420; border: 1px solid var(--border); color: #c9d4e5; overflow-x: auto; }
     .small { font-size: 12px; color: var(--muted); }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>NFL Matchup Predictor</h1>
-    <div class="sub">Pick two teams and get win probabilities plus projected passing/rushing yards and sacks with 90% ranges.</div>
+    <div class="sub">Pick two teams and get win probabilities plus projected stats with 90% prediction intervals.</div>
 
     <div class="card">
       <div class="controls" role="group" aria-label="Team selection">
@@ -183,7 +193,7 @@
     const API = "http://localhost:8000";
     const $ = (id) => document.getElementById(id);
 
-    // Custom display names (no logos). Value stays the short code used by your API.
+    // Custom display names
     const TEAMS = {
       ARI:{city:"Arizona", name:"Cardinals", display:"ARI — Arizona Cardinals"},
       ATL:{city:"Atlanta", name:"Falcons", display:"ATL — Atlanta Falcons"},
@@ -220,7 +230,7 @@
     };
     const TEAM_ORDER = Object.keys(TEAMS);
 
-    const TEAM_PREFILL = ["NE","PHI"]; // defaults
+    const TEAM_PREFILL = ["KC","BUF"]; // defaults
 
     function setAlert(msg, type="err"){
       const el = $("alert");
@@ -231,7 +241,6 @@
     function clearAlert(){ const el=$("alert"); el.style.display="none"; el.textContent=""; }
 
     async function loadTeams() {
-      // Populate from the TEAMS map to get custom labels
       for (const sel of [$("home"), $("away")]) {
         sel.innerHTML = TEAM_ORDER
           .map(code => `<option value="${code}">${TEAMS[code].display}</option>`)
@@ -239,9 +248,6 @@
       }
       $("home").value = TEAM_PREFILL[0];
       $("away").value = TEAM_PREFILL[1];
-
-      // (Optional) You can still hit /teams to validate supported codes:
-      // const res = await fetch(`${API}/teams`); // no-op in UI
     }
 
     function fmtPct(x){ return (x*100).toFixed(1) + "%"; }
@@ -300,7 +306,7 @@
         const hasStats = category.stats.some(s => obj[`${prefix}${s.key}`]);
         if (!hasStats) continue;
 
-        html += `<div style="margin-top: 12px;"><strong style="color: var(--accent); font-size: 13px;">${category.title}</strong></div>`;
+        html += `<div class="category-title">${category.title}</div>`;
         
         for (const stat of category.stats) {
           const statKey = `${prefix}${stat.key}`;
@@ -343,7 +349,12 @@
       $("raw").hidden = true;
 
       const home = $("home").value, away = $("away").value;
-      if (home === away){ setAlert("Home and away cannot be the same team."); btn.disabled=false; btn.textContent="Predict"; return; }
+      if (home === away){ 
+        setAlert("Home and away cannot be the same team."); 
+        btn.disabled=false; 
+        btn.textContent="Predict"; 
+        return; 
+      }
 
       try{
         const res = await fetch(`${API}/predict`, {
@@ -351,12 +362,24 @@
           headers: {"Content-Type":"application/json"},
           body: JSON.stringify({home, away})
         });
-        if(!res.ok) throw new Error(await res.text());
+        
+        if(!res.ok) {
+          const errorText = await res.text();
+          let errorMsg = "Prediction failed";
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMsg = errorJson.detail || errorText;
+          } catch {
+            errorMsg = errorText;
+          }
+          throw new Error(errorMsg);
+        }
+        
         const out = await res.json();
 
         const H = TEAMS[out.home_team], A = TEAMS[out.away_team];
 
-        // header + meter
+        // Header + meter
         $("matchupTitle").textContent = `${H.city} ${H.name} vs ${A.city} ${A.name}`;
         $("context").textContent = out.context || "";
         const pHome = out.win_prob_home ?? 0;
@@ -364,14 +387,14 @@
         $("homePct").textContent = `${H.name} ${fmtPct(pHome)}`;
         $("awayPct").textContent = `${A.name} ${fmtPct(1 - pHome)}`;
 
-        // stat cards
+        // Stat cards
         $("homeHead").textContent = `${H.city} ${H.name} projections`;
         $("awayHead").textContent = `${A.city} ${A.name} projections`;
         $("homeStats").innerHTML = statBlock(out.stats.home, "home_");
         $("awayStats").innerHTML = statBlock(out.stats.away, "away_");
 
-        // raw JSON (toggle by uncommenting next line)
-        $("raw").textContent = JSON.stringify(out, null, 2);
+        // Raw JSON (uncomment to show)
+        // $("raw").textContent = JSON.stringify(out, null, 2);
         // $("raw").hidden = false;
 
         $("summary").hidden = false;
@@ -379,8 +402,8 @@
       }catch(e){
         setAlert(`Prediction failed: ${e.message || e}`, "err");
       }finally{
-        const btn2 = $("go");
-        btn2.disabled = false; btn2.textContent = "Predict";
+        btn.disabled = false;
+        btn.textContent = "Predict";
       }
     }
 

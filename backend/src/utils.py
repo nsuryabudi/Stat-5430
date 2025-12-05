@@ -5,13 +5,15 @@ import pandas as pd
 def season_split(season: pd.Series, train_end: int, valid_end: int):
     # Train: everything up to train_end EXCEPT valid_year
     s = season.values
-    tr = np.where((s <= train_end) & (s != valid_end))[0]
     
-    # Validation: only the valid_end year
-    va = np.where(s == valid_end)[0]
+    # Train: everything up to and including train_end
+    tr = np.where(s <= train_end)[0]
+
+    # Validation: everything between train_end and valid_end (exclusive of train_end)
+    va = np.where((s > train_end) & (s <= valid_end))[0]
     
-    # Test: everything after train_end
-    te = np.where(s > train_end)[0]
+    # Test: everything after valid_end
+    te = np.where(s > valid_end)[0]
     return tr, va, te
 
 # ---------- rolling (leakage-safe) ----------
@@ -26,7 +28,7 @@ def add_rolling_means(df, cols, windows=(3,5,8,10), ewm_halflife=3, use_ewm=True
     print(f"[utils.add_rolling_means] windows={windows} use_ewm={use_ewm} halflife={ewm_halflife}")
 
     out = df.sort_values(["team", "season", "week"]).copy()
-    g = out.groupby("team", group_keys=False)
+    g = out.groupby("team", group_keys=False) 
 
     # Coerce once
     for c in cols:
@@ -53,24 +55,6 @@ def add_rolling_means(df, cols, windows=(3,5,8,10), ewm_halflife=3, use_ewm=True
             out[f"{c}_exp"] = ewm_series
 
     return out
-
-# ---------- odds helpers ----------
-def american_to_prob(odds: float) -> float:
-    """Convert American moneyline to implied probability (with vig)."""
-    if odds is None:
-        return np.nan
-    o = float(odds)
-    if np.isnan(o):
-        return np.nan
-    return (100.0 / (o + 100.0)) if o > 0 else (-o / (-o + 100.0))
-
-def remove_vig(p_home_raw: float, p_away_raw: float):
-    """Normalize home/away implied probs to remove vig. Returns (p_home, p_away, vig)."""
-    ph, pa = p_home_raw, p_away_raw
-    if np.isnan(ph) or np.isnan(pa) or (ph + pa) <= 0:
-        return (np.nan, np.nan, np.nan)
-    s = ph + pa
-    return ph / s, pa / s, s - 1.0
 
 # ---------- team code normalization (optional, handy in infer) ----------
 TEAM_ALIASES = {"LAR":"LA","STL":"LA","SD":"LAC","OAK":"LV"}
